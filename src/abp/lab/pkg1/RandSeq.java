@@ -12,6 +12,7 @@ import java.util.Random;
  * @author pmele
  */
 public class RandSeq {
+    @SuppressWarnings("FieldMayBeFinal")
     private String seq;
 
     public RandSeq(int length) throws Exception {
@@ -70,6 +71,7 @@ public class RandSeq {
         return sequence;
     }
     
+    @Override
     public String toString() {
         return seq;
     }

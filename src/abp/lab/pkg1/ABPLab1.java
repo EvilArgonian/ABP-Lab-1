@@ -7,7 +7,7 @@ package abp.lab.pkg1;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Random;
+import org.apache.commons.math3.stat.inference.ChiSquareTest;
 
 /**
  *
@@ -67,38 +67,24 @@ public class ABPLab1 {
         //A: Very close to .12*.12*.12*1000, or 1.728, functionally 1 or 2 times. 
         //Several runs of this code have produced results in the range of 0 and 3, which again seems reasonably close.
         
-        // Extra credit
         
+        
+        
+        // Extra credit
+        extraCredit(); // Comment this out to avoid running
+        
+    }
+    
+    private static void extraCredit() throws Exception {
+        HashMap<String, Integer> seqTracker = new HashMap<>();
+        int length = 3; //3-mers
+        double[] weights = new double[4];
         weights[0] = .12; // A, C, G, T not evenly distributed
         weights[1] = .38;
         weights[2] = .39;
         weights[3] = .11;
         
-        ArrayList<HashMap> stats = new ArrayList<>();
-        /*
-        for (int run = 0; run < 10000; run++) {
-            
-            seqTracker = new HashMap<>(); //Reset seqTracker
-            for (int i = 0; i < 10000; i++) {
-                String seq = new RandSeq(length, weights).toString();
-                if (seqTracker.containsKey(seq)) {
-                    seqTracker.put(seq, seqTracker.get(seq) + 1);
-                } else {
-                    seqTracker.put(seq, 1);
-                }
-            }
-            
-            stats.add(seqTracker);
-            
-            /*
-            if (seqTracker.containsKey("AAA")) {
-                stats.add(seqTracker.get("AAA"));
-            } else {
-                stats.add(0);
-            }*/
-        //}
-        
-        HashMap<String, Double> expectedFreqs = new HashMap<>();
+        HashMap<String, Double> expectedFreqs = new HashMap<>();  //Expected if all of equal frequency
         for (int p1 = 0; p1 < 4; p1++) {
             for (int p2 = 0; p2 < 4; p2++) {
                 for (int p3 = 0; p3 < 4; p3++) {
@@ -122,14 +108,56 @@ public class ABPLab1 {
                 }
             }
         }
+        double[] expected = new double[expectedFreqs.keySet().size()];
+        int keyIndex = 0;
         for (String key : expectedFreqs.keySet()) {
             System.out.println("Expecting " + expectedFreqs.get(key) + " occurrences of " + key);
+            expected[keyIndex] = expectedFreqs.get(key);
+            keyIndex++;
         }
+        int df = (expectedFreqs.keySet().size() - 1) * (10000 - 1);
         
+        double chiStat, probChiStat;
+        boolean fitsNormalDistribution;
+        ArrayList<Double> chiStats = new ArrayList<>();
+        ArrayList<Double> probChiStats = new ArrayList<>();
+        ArrayList<Boolean> resultsFitted = new ArrayList<>();
+        for (int run = 0; run < 10000; run++) {
+            seqTracker = new HashMap<>(); //Reset seqTracker
+            for (String key : expectedFreqs.keySet()) {
+                seqTracker.put(key, 0); //Initialize all possible sequences with 0 counts
+            }
+            for (int i = 0; i < 10000; i++) {
+                String seq = new RandSeq(length, weights).toString();
+                seqTracker.put(seq, seqTracker.get(seq) + 1);
+            }
+            
+            long[] observed = new long[seqTracker.keySet().size()];
+            keyIndex = 0;
+            for (String key : expectedFreqs.keySet()) {
+                observed[keyIndex] = Long.parseLong("" + seqTracker.get(key));
+                keyIndex++;
+            }
+            
+            ChiSquareTest chi2Test = new ChiSquareTest();
+            chiStat = chi2Test.chiSquare(expected, observed);
+            probChiStat = ChiSquareUtils.pochisq(chiStat, df);
+            chiStats.add(chiStat);
+            probChiStats.add(probChiStat);
+            
+            fitsNormalDistribution = chi2Test.chiSquareTest(expected, observed, 0.05);
+            resultsFitted.add(fitsNormalDistribution);
+        }
+        double sum = 0.0;
+        for (double prob : probChiStats) {
+            sum += (1.0 - prob);
+        }
+        System.out.println("Average probability of the normal distribution producing the observed frequencies over 10000 tests: " + (sum/10000));
         
-        
-        //double chiSquareValue= 0.0; //Get real value
-        
-        //ChiSquareUtils.pochisq(chiSquareValue, ((10000-1)*(4^3-1)));
+        sum = 0.0;
+        for (boolean fit : resultsFitted) {
+            if (fit) { sum += 1.0; }
+        }
+        System.out.println("Results demonstrated that normal distribution fit in " + ((sum/10000)*100) + "% of tests.");
     }
 }
